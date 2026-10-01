@@ -8,3 +8,5 @@ dist
 *.log
 .DS_Store
 sst.config.ts
+src/sst-env.d.ts
+sst-env.d.ts
