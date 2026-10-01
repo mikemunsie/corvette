@@ -1,0 +1,10 @@
+node_modules
+dist
+.sst
+.data
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+sst.config.ts
