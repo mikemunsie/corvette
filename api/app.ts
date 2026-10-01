@@ -2,17 +2,13 @@ import { Hono } from "hono";
 import { BUDGET_LIMIT_USD } from "../src/lib/budget.ts";
 import type { GarageState } from "../src/lib/types.ts";
 import {
-  beginLogin,
-  beginRegistration,
-  codesMatch,
   currentSession,
   endSession,
-  finishLogin,
-  finishRegistration,
-  localPasskeyBypass,
+  localOpen,
+  loginWithSetupCode,
   requestOrigin,
 } from "./auth.ts";
-import { getApiEnabled, getGarage, listCredentials, saveGarage } from "./store.ts";
+import { getApiEnabled, getGarage, saveGarage } from "./store.ts";
 
 export const app = new Hono();
 
@@ -31,47 +27,17 @@ app.use("/api/*", async (c, next) => {
 });
 
 app.get("/api/auth/me", async (c) => {
-  const open = localPasskeyBypass(c.req.header("origin"));
+  const open = localOpen(c.req.header("origin"));
   const session = open || Boolean(await currentSession(c.req.header("cookie")));
-  const credentials = await listCredentials();
-  return c.json({ authenticated: session, hasPasskey: credentials.length > 0, localOpen: open });
+  return c.json({ authenticated: session, localOpen: open });
 });
 
-app.post("/api/auth/register/options", async (c) => {
+app.post("/api/auth/login", async (c) => {
   const origin = requestOrigin(c.req.header("origin"));
-  const credentials = await listCredentials();
   const body = await c.req.json().catch(() => ({}));
-  if (credentials.length === 0) {
-    const setupCode = typeof body.setupCode === "string" ? body.setupCode : "";
-    if (!codesMatch(setupCode)) return c.json({ error: "Setup code is wrong." }, 401);
-  } else if (!(await signedIn(c.req.header("cookie"), c.req.header("origin")))) {
-    return c.json({ error: "Sign in before adding another passkey." }, 401);
-  }
-  const pending = await beginRegistration(origin);
-  return c.json(pending);
-});
-
-app.post("/api/auth/register/verify", async (c) => {
-  const origin = requestOrigin(c.req.header("origin"));
-  const body = await c.req.json();
-  const cookie = await finishRegistration(origin, String(body.challengeId ?? ""), body.response);
-  if (!cookie) return c.json({ error: "Passkey was not accepted." }, 400);
-  c.header("set-cookie", cookie);
-  return c.json({ ok: true });
-});
-
-app.post("/api/auth/login/options", async (c) => {
-  const origin = requestOrigin(c.req.header("origin"));
-  const credentials = await listCredentials();
-  if (credentials.length === 0) return c.json({ error: "Set up a passkey first." }, 409);
-  return c.json(await beginLogin(origin));
-});
-
-app.post("/api/auth/login/verify", async (c) => {
-  const origin = requestOrigin(c.req.header("origin"));
-  const body = await c.req.json();
-  const cookie = await finishLogin(origin, String(body.challengeId ?? ""), body.response);
-  if (!cookie) return c.json({ error: "Passkey was not accepted." }, 400);
+  const setupCode = typeof body.setupCode === "string" ? body.setupCode : "";
+  const cookie = await loginWithSetupCode(origin, setupCode);
+  if (!cookie) return c.json({ error: "Setup code is wrong." }, 401);
   c.header("set-cookie", cookie);
   return c.json({ ok: true });
 });
@@ -114,7 +80,7 @@ app.put("/api/garage", async (c) => {
 });
 
 async function signedIn(cookie: string | undefined, origin: string | undefined) {
-  if (localPasskeyBypass(origin)) return true;
+  if (localOpen(origin)) return true;
   return Boolean(await currentSession(cookie));
 }
 

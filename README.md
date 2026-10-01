@@ -14,7 +14,7 @@ cp .env.example .env.local   # set SETUP_CODE
 npm run dev                  # web on :3000, API on :3001
 ```
 
-Choose your own setup code in `.env.local`. Do not commit that file. Localhost opens without a passkey. A passkey created on localhost does not sign in at the live site, and the live site still requires one.
+Choose your own setup code in `.env.local`. Do not commit that file. Localhost opens the garage without asking. The live site asks for the setup code and keeps a session cookie.
 
 ## Deploy
 

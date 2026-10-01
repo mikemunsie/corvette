@@ -11,7 +11,7 @@ if [[ -z "$ALERT_EMAIL" ]]; then
   echo "Alert email is required." >&2
   exit 1
 fi
-read -r -s -p "Setup code for the first passkey: " SETUP_CODE
+read -r -s -p "Setup code for the live site: " SETUP_CODE
 echo
 if [[ -z "$SETUP_CODE" ]]; then
   echo "Setup code is required." >&2

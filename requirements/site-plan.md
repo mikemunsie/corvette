@@ -14,37 +14,33 @@
 
 | Route | Who | What happens |
 | --- | --- | --- |
-| `/` | public or owner | Login with a passkey. Localhost skips the passkey and opens the garage. Once signed in, the car diagram, odometer, and first-visit questions for age-critical parts. |
-| `/setup` | public, with setup code | Register the first passkey. A signed-in owner can add another passkey. |
+| `/` | public or owner | Login with the setup code. Localhost skips the form and opens the garage. Once signed in, the car diagram, odometer, and first-visit questions for age-critical parts. |
 | `/maintenance` | owner | Service list, mark an item done, edit intervals, add and resolve open problems. |
 | `/power` | owner | Build sheet, stock comparison, crate-rating markers, in-car estimate, optional measured dyno points. |
 
 ## API
 
 - **Needed:** yes
-- **Why:** Passkeys and one shared copy of the car, instead of data stuck in a single browser.
-- **Auth:** passkeys
+- **Why:** One shared copy of the car, instead of data stuck in a single browser.
+- **Auth:** setup code, then a session cookie
 
 Routes:
 
 - `GET /api/health` — public, stays up when the API is paused
-- `GET /api/auth/me` — session and whether a passkey exists
-- `POST /api/auth/register/options` — first key requires `SetupCode`; another key requires a session
-- `POST /api/auth/register/verify` — stores the credential
-- `POST /api/auth/login/options` — public
-- `POST /api/auth/login/verify` — sets an HTTP-only session cookie
+- `GET /api/auth/me` — session
+- `POST /api/auth/login` — setup code, then a session cookie
 - `POST /api/auth/logout` — clears the session
 - `GET /api/garage` — owner, car state
 - `PUT /api/garage` — owner, replace car state
 - `GET /api/garage/export` — owner, download the same JSON
 
-Production relying party is the hostname of `ORIGIN`. Localhost passkeys do not log into production.
+The setup code is `SETUP_CODE` from the environment. Localhost sessions do not apply in production.
 
 ## Data
 
 - **DynamoDB:** yes
   - `StatsTable`: `pk` (string). Item `pk=site` holds `apiEnabled`.
-  - `GarageTable`: `pk` + `sk`. Garage state is one item. Passkey credentials and sessions use `pk=auth`.
+  - `GarageTable`: `pk` + `sk`. Garage state is one item. Sessions use `pk=auth`.
 - **Uploads / media:** no
 
 Locally, with no table names set, the API stores the same records in `.data/db.json`.

@@ -6,35 +6,19 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
-  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { defaultGarage, defaultItems } from "../src/data/defaults.ts";
 import type { GarageState } from "../src/lib/types.ts";
-
-export type CredentialRecord = {
-  id: string;
-  publicKey: string;
-  counter: number;
-  transports: string[];
-};
 
 export type SessionRecord = {
   id: string;
   expiresAt: number;
 };
 
-type ChallengeRecord = {
-  id: string;
-  challenge: string;
-  expiresAt: number;
-};
-
 type FileDb = {
   apiEnabled: boolean;
   state: GarageState | null;
-  credentials: CredentialRecord[];
   sessions: SessionRecord[];
-  challenges: ChallengeRecord[];
 };
 
 const filePath = path.join(process.cwd(), ".data", "db.json");
@@ -44,16 +28,15 @@ function emptyFile(): FileDb {
   return {
     apiEnabled: true,
     state: null,
-    credentials: [],
     sessions: [],
-    challenges: [],
   };
 }
 
 async function readFileDb(): Promise<FileDb> {
   try {
     const raw = await readFile(filePath, "utf8");
-    return { ...emptyFile(), ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<FileDb>;
+    return { ...emptyFile(), ...parsed, sessions: parsed.sessions ?? [] };
   } catch {
     return emptyFile();
   }
@@ -175,44 +158,6 @@ export async function saveGarage(input: GarageState): Promise<GarageState> {
   return state;
 }
 
-export async function listCredentials(): Promise<CredentialRecord[]> {
-  if (!useDynamo()) {
-    const db = await readFileDb();
-    return db.credentials;
-  }
-  const result = await doc().send(
-    new QueryCommand({
-      TableName: process.env.GARAGE_TABLE,
-      KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
-      ExpressionAttributeValues: { ":pk": "auth", ":sk": "cred#" },
-    }),
-  );
-  return (result.Items ?? []).map((item) => ({
-    id: String(item.id),
-    publicKey: String(item.publicKey),
-    counter: Number(item.counter),
-    transports: (item.transports as string[]) ?? [],
-  }));
-}
-
-export async function saveCredential(credential: CredentialRecord) {
-  if (!useDynamo()) {
-    await locked(async () => {
-      const db = await readFileDb();
-      db.credentials = db.credentials.filter((item) => item.id !== credential.id);
-      db.credentials.push(credential);
-      await writeFileDb(db);
-    });
-    return;
-  }
-  await doc().send(
-    new PutCommand({
-      TableName: process.env.GARAGE_TABLE,
-      Item: { pk: "auth", sk: `cred#${credential.id}`, ...credential },
-    }),
-  );
-}
-
 export async function saveSession(session: SessionRecord) {
   if (!useDynamo()) {
     await locked(async () => {
@@ -270,51 +215,3 @@ export async function deleteSession(id: string) {
   );
 }
 
-export async function saveChallenge(challenge: ChallengeRecord) {
-  if (!useDynamo()) {
-    await locked(async () => {
-      const db = await readFileDb();
-      db.challenges = db.challenges.filter((item) => item.expiresAt > Date.now());
-      db.challenges.push(challenge);
-      await writeFileDb(db);
-    });
-    return;
-  }
-  await doc().send(
-    new PutCommand({
-      TableName: process.env.GARAGE_TABLE,
-      Item: { pk: "auth", sk: `chal#${challenge.id}`, ...challenge },
-    }),
-  );
-}
-
-export async function takeChallenge(id: string) {
-  if (!useDynamo()) {
-    return locked(async () => {
-      const db = await readFileDb();
-      const found = db.challenges.find((item) => item.id === id && item.expiresAt > Date.now());
-      db.challenges = db.challenges.filter((item) => item.id !== id);
-      await writeFileDb(db);
-      return found ?? null;
-    });
-  }
-  const client = doc();
-  const result = await client.send(
-    new GetCommand({
-      TableName: process.env.GARAGE_TABLE,
-      Key: { pk: "auth", sk: `chal#${id}` },
-    }),
-  );
-  await client.send(
-    new DeleteCommand({
-      TableName: process.env.GARAGE_TABLE,
-      Key: { pk: "auth", sk: `chal#${id}` },
-    }),
-  );
-  if (!result.Item || Number(result.Item.expiresAt) <= Date.now()) return null;
-  return {
-    id: String(result.Item.id),
-    challenge: String(result.Item.challenge),
-    expiresAt: Number(result.Item.expiresAt),
-  };
-}

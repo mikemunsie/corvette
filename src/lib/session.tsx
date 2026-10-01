@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-type Me = { authenticated: boolean; hasPasskey: boolean; localOpen?: boolean };
+type Me = { authenticated: boolean; localOpen?: boolean };
 
 const SessionContext = createContext<{
   me: Me | null;
@@ -15,7 +15,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   async function refresh() {
     const response = await fetch("/api/auth/me", { credentials: "include" });
     if (!response.ok) {
-      setMe({ authenticated: false, hasPasskey: false });
+      setMe({ authenticated: false });
       return;
     }
     setMe((await response.json()) as Me);

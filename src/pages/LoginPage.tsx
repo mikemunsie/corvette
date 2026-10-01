@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { startAuthentication } from "@simplewebauthn/browser";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/session";
 
 export function LoginPage() {
-  const { me, refresh } = useSession();
+  const { refresh } = useSession();
   const navigate = useNavigate();
+  const [setupCode, setSetupCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -14,20 +14,16 @@ export function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const optionsResponse = await fetch("/api/auth/login/options", {
-        method: "POST",
-        credentials: "include",
-      });
-      const pending = await optionsResponse.json();
-      if (!optionsResponse.ok) throw new Error(pending.error ?? "No passkey yet.");
-      const assertion = await startAuthentication({ optionsJSON: pending.options });
-      const verify = await fetch("/api/auth/login/verify", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ challengeId: pending.challengeId, response: assertion }),
+        body: JSON.stringify({ setupCode }),
       });
-      if (!verify.ok) throw new Error("That passkey was not accepted.");
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "Setup code is wrong.");
+      }
       await refresh();
       navigate("/");
     } catch (reason) {
@@ -42,19 +38,30 @@ export function LoginPage() {
       <p className="display text-[10px] tracking-[0.35em] text-magenta">MIKES 1988</p>
       <h1 className="chrome display mt-2 text-4xl">CORVETTE</h1>
 
-      <div className="panel mt-8 space-y-4 p-6">
-        {me?.hasPasskey ? (
-          <Button onClick={signIn} disabled={busy}>
-            {busy ? "Waiting for passkey" : "Sign in with passkey"}
-          </Button>
-        ) : (
-          <p className="text-white/80">This browser does not have a passkey for the car yet.</p>
-        )}
+      <form
+        className="panel mt-8 space-y-4 p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void signIn();
+        }}
+      >
+        <p className="text-white/75">Enter the setup code to open the garage.</p>
+        <label className="block text-sm text-white/70">
+          Setup code
+          <input
+            className="mt-1 min-h-12 w-full border border-cyan/40 bg-black/40 px-3 text-base"
+            type="password"
+            value={setupCode}
+            onChange={(event) => setSetupCode(event.target.value)}
+            autoComplete="current-password"
+            autoFocus
+          />
+        </label>
+        <Button type="submit" disabled={busy || !setupCode}>
+          {busy ? "Opening" : "Open garage"}
+        </Button>
         {error ? <p className="text-hot">{error}</p> : null}
-        <Link className="display block text-xs text-cyan" to="/setup">
-          Create a passkey
-        </Link>
-      </div>
+      </form>
     </div>
   );
 }

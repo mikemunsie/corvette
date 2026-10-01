@@ -4,7 +4,7 @@ This repository is public on GitHub. Every committed file is world-readable. Do 
 
 ## Keep out of git
 
-- Hostnames, domains, DNS zones, AWS account details, email addresses, setup codes, session cookies, and passkey material
+- Hostnames, domains, DNS zones, AWS account details, email addresses, setup codes, and session cookies
 - Real environment values. `.env.example` stays placeholders only
 - These paths are gitignored. Do not force-add them: `.env`, `.env.local`, `.data/`, `.sst/`, `sst.config.ts`
 
