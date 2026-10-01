@@ -38,24 +38,25 @@ select {
 .horizon {
   position: fixed;
   inset: auto 0 0;
-  height: 55vh;
+  height: 48vh;
   overflow: hidden;
   pointer-events: none;
   contain: paint;
-  background: linear-gradient(to top, rgba(7, 3, 20, 0.2), #070314 78%);
+  background: linear-gradient(to top, rgba(7, 3, 20, 0.55), transparent 72%);
 }
 
 .sun {
-  position: absolute;
+  position: fixed;
   left: 50%;
-  bottom: 28vh;
+  top: 12vh;
+  z-index: 0;
   pointer-events: none;
-  width: min(46vw, 320px);
-  height: min(46vw, 320px);
+  width: min(78vw, 40vh);
+  height: min(78vw, 40vh);
   transform: translateX(-50%);
   border-radius: 999px;
-  background: linear-gradient(#ffe36a 0%, #ff7a18 28%, #ff2d95 62%, #6d28d9 100%);
-  box-shadow: 0 0 80px rgba(255, 45, 149, 0.65);
+  background: linear-gradient(#b29f4a 0%, #b25511 28%, #b22068 62%, #4c1c98 100%);
+  box-shadow: 0 0 80px rgba(178, 32, 104, 0.45);
 }
 
 .sun-bars {
@@ -115,6 +116,17 @@ select {
   z-index: -1;
   pointer-events: none;
   backdrop-filter: blur(8px);
+}
+
+.panel-glass {
+  background: rgba(0, 0, 0, 0.9);
+  box-shadow:
+    0 0 24px rgba(255, 45, 149, 0.1),
+    inset 0 0 30px rgba(61, 255, 245, 0.04);
+}
+
+.panel-glass::before {
+  backdrop-filter: none;
 }
 
 .display {

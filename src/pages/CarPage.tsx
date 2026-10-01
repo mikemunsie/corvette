@@ -58,7 +58,7 @@ export function CarPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <section className="panel space-y-4 p-3 sm:p-5">
+        <section className="panel panel-glass space-y-4 p-3 sm:p-5">
           {error ? <p className="text-hot">{error}</p> : null}
           <Odometer miles={garage.odometer} onSave={(odometer) => save({ ...garage, odometer })} />
           {!dismissed && pending.length > 0 ? (
